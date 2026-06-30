@@ -2354,8 +2354,11 @@ function vMList(){
 
   const headerCols=cols.map(c=>`<th style="padding:8px 10px;font-size:12px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);min-width:90px;white-space:nowrap">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-      <span style="overflow:hidden;text-overflow:ellipsis;max-width:90px">${c.name}</span>
-      <button onclick="doMDeleteColumn('${c.id}')" title="ลบงานนี้" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">✕ ลบ</button>
+      <span style="overflow:hidden;text-overflow:ellipsis;max-width:90px" title="${c.name}">${c.name}</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="doMRenameColumn('${c.id}')" title="แก้ไขชื่องานนี้" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer">✏️ แก้ไข</button>
+        <button onclick="doMDeleteColumn('${c.id}')" title="ลบงานนี้" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">✕ ลบ</button>
+      </div>
     </div>
   </th>`).join('');
 
@@ -2435,6 +2438,29 @@ async function doMAddColumn(){
   const data=getSubjectData(pin,subject);
   data.columns=data.columns||[];
   data.columns.push({id:'col'+Date.now(),name:name.trim()});
+  render(true);
+  try{
+    await saveSubjectData();
+  } finally {
+    startPoll();
+    _isSaving = false; hideSavingToast();
+  }
+  render(true);
+}
+
+async function doMRenameColumn(colId){
+  if(_isSaving) return;
+  const pin=S.subjectTeacherPin,subject=S.subjectTeacherSubject;
+  if(!pin||!subject)return;
+  const data=getSubjectData(pin,subject);
+  const col=(data.columns||[]).find(c=>c.id===colId);
+  if(!col)return;
+  const name=prompt('แก้ไขชื่องาน',col.name);
+  if(name===null)return; // กดยกเลิก
+  if(!name.trim()){alert('กรุณากรอกชื่องาน');return;}
+  _isSaving = true; showSavingToast();
+  stopPoll();
+  col.name=name.trim();
   render(true);
   try{
     await saveSubjectData();
