@@ -1,9 +1,7 @@
 const express = require('express');
 const path = require('path');
-const https = require('https');
-const http = require('http');
 const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -53,6 +51,8 @@ async function readDB() {
   return memDB;
 }
 
+// เขียนทับทั้งฐานข้อมูล - ใช้เฉพาะตอน import/restore ข้อมูลทั้งชุด หรือเป็น fallback เท่านั้น
+// เพราะส่งข้อมูล "ทั้งหมด" ไป Firestore ทุกครั้ง กิน bandwidth เยอะถ้าเรียกบ่อย
 async function writeDB(data) {
   memDB = data;
   try {
@@ -62,21 +62,60 @@ async function writeDB(data) {
   }
 }
 
+// อัปเดตเฉพาะ field ที่เปลี่ยน (เช่น 'students.123') แทนการเขียนทับทั้งก้อน
+// ลด bandwidth ไป Firestore ได้มาก เพราะส่งแค่ส่วนที่เปลี่ยนจริง ไม่ใช่ข้อมูลนักเรียนทั้งห้อง
+async function updateFields(updates) {
+  // sync เข้า memDB ให้ตรงกันทันที (ไม่ต้องรอ network)
+  Object.entries(updates).forEach(([fieldPath, value]) => {
+    const keys = fieldPath.split('.');
+    let obj = memDB;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (!obj[keys[i]] || typeof obj[keys[i]] !== 'object') obj[keys[i]] = {};
+      obj = obj[keys[i]];
+    }
+    obj[keys[keys.length - 1]] = value;
+  });
+  try {
+    await DOC_REF.update(updates);
+  } catch(e) {
+    console.log('Firestore update error, fallback to full write:', e.message);
+    // เผื่อเอกสารยังไม่เคยถูกสร้าง หรือ field path มีปัญหา ให้ fallback เขียนทั้งก้อนแทน (สำรองความถูกต้องของข้อมูล)
+    await writeDB(memDB);
+  }
+}
+
+// ลบ field เฉพาะจุด (เช่น 'students.123') ออกจาก Firestore โดยไม่กระทบ field อื่น
+async function deleteField(fieldPath) {
+  const keys = fieldPath.split('.');
+  let obj = memDB;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (!obj[keys[i]]) { obj = null; break; }
+    obj = obj[keys[i]];
+  }
+  if (obj) delete obj[keys[keys.length - 1]];
+  try {
+    await DOC_REF.update({ [fieldPath]: FieldValue.delete() });
+  } catch(e) {
+    console.log('Firestore delete error, fallback to full write:', e.message);
+    await writeDB(memDB);
+  }
+}
+
 // ===== Routes =====
 app.get('/api/data', async (req, res) => {
   res.json(await readDB());
 });
 
+// endpoint นี้เขียนทับทั้งฐานข้อมูล - มีไว้สำหรับ import/restore ข้อมูลทั้งชุดเท่านั้น ไม่ควรเรียกบ่อย
 app.post('/api/data', async (req, res) => {
   await writeDB(req.body);
   res.json({ ok: true });
 });
 
 app.post('/api/students', async (req, res) => {
-  const db2 = await readDB();
+  await readDB();
   const { id, student } = req.body;
-  db2.students[id] = student;
-  await writeDB(db2);
+  await updateFields({ [`students.${id}`]: student });
   res.json({ ok: true });
 });
 
@@ -84,8 +123,8 @@ app.patch('/api/students/:id', async (req, res) => {
   const db2 = await readDB();
   const sid = req.params.id;
   if (!db2.students[sid]) return res.status(404).json({ error: 'not found' });
-  db2.students[sid] = { ...db2.students[sid], ...req.body };
-  await writeDB(db2);
+  const merged = { ...db2.students[sid], ...req.body };
+  await updateFields({ [`students.${sid}`]: merged });
   res.json({ ok: true });
 });
 
@@ -93,9 +132,9 @@ app.post('/api/students/:id/logs', async (req, res) => {
   const db2 = await readDB();
   const sid = req.params.id;
   if (!db2.students[sid]) return res.status(404).json({ error: 'not found' });
-  if (!db2.students[sid].logs) db2.students[sid].logs = [];
-  db2.students[sid].logs.unshift(req.body);
-  await writeDB(db2);
+  const logs = [req.body, ...(db2.students[sid].logs || [])];
+  const merged = { ...db2.students[sid], logs };
+  await updateFields({ [`students.${sid}`]: merged });
   res.json({ ok: true });
 });
 
@@ -103,9 +142,9 @@ app.post('/api/students/:id/redeemLogs', async (req, res) => {
   const db2 = await readDB();
   const sid = req.params.id;
   if (!db2.students[sid]) return res.status(404).json({ error: 'not found' });
-  if (!db2.students[sid].redeemLogs) db2.students[sid].redeemLogs = [];
-  db2.students[sid].redeemLogs.unshift(req.body);
-  await writeDB(db2);
+  const redeemLogs = [req.body, ...(db2.students[sid].redeemLogs || [])];
+  const merged = { ...db2.students[sid], redeemLogs };
+  await updateFields({ [`students.${sid}`]: merged });
   res.json({ ok: true });
 });
 
@@ -113,36 +152,33 @@ app.patch('/api/students/:id/hw/:subject', async (req, res) => {
   const db2 = await readDB();
   const { id, subject } = req.params;
   if (!db2.students[id]) return res.status(404).json({ error: 'not found' });
-  if (!db2.students[id].hw) db2.students[id].hw = {};
-  db2.students[id].hw[subject] = req.body;
-  await writeDB(db2);
+  const hw = { ...(db2.students[id].hw || {}), [subject]: req.body };
+  const merged = { ...db2.students[id], hw };
+  await updateFields({ [`students.${id}`]: merged });
   res.json({ ok: true });
 });
 
 app.delete('/api/students/:id', async (req, res) => {
   const db2 = await readDB();
   if (!db2.students[req.params.id]) return res.status(404).json({ error: 'not found' });
-  delete db2.students[req.params.id];
-  await writeDB(db2);
+  await deleteField(`students.${req.params.id}`);
   res.json({ ok: true });
 });
 
 app.get('/api/ping', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 app.post('/api/requests', async (req, res) => {
-  const db2 = await readDB();
-  if (!db2.requests) db2.requests = {};
+  await readDB();
   const id = 'req' + Date.now();
-  db2.requests[id] = req.body;
-  await writeDB(db2);
+  await updateFields({ [`requests.${id}`]: req.body });
   res.json({ ok: true, id });
 });
 
 app.patch('/api/requests/:id', async (req, res) => {
   const db2 = await readDB();
   if (!db2.requests[req.params.id]) return res.status(404).json({ error: 'not found' });
-  db2.requests[req.params.id] = { ...db2.requests[req.params.id], ...req.body };
-  await writeDB(db2);
+  const merged = { ...db2.requests[req.params.id], ...req.body };
+  await updateFields({ [`requests.${req.params.id}`]: merged });
   res.json({ ok: true });
 });
 
@@ -153,55 +189,54 @@ const listener = app.listen(process.env.PORT || 3000, async () => {
   await readDB();
   console.log('Ready! Students:', Object.keys(memDB.students || {}).length);
 
-  // Ping ตัวเองทุก 14 นาที
-  const SELF_URL = process.env.RENDER_EXTERNAL_URL || 'http://localhost:' + (process.env.PORT || 3000);
-  setInterval(() => {
-    try {
-      const url = new URL(SELF_URL + '/api/ping');
-      const lib = url.protocol === 'https:' ? https : http;
-      lib.get(url.toString(), r => console.log('Ping:', r.statusCode)).on('error', e => console.log('Ping err:', e.message));
-    } catch(e) {}
-  }, 14 * 60 * 1000);
+  // หมายเหตุ: ลบ self-ping (outbound) ออกแล้ว เพื่อลดแบนด์วิดท์
+  // Render เปลี่ยนนโยบายให้นับ "Service-Initiated" traffic เข้าแบนด์วิดท์ด้วย (ตั้งแต่ ต.ค. 2025)
+  // ใช้บริการภายนอกอย่าง UptimeRobot/cron-job.org ส่ง ping เข้ามาแทน (นับเป็น HTTP Responses ซึ่งเล็กกว่ามาก)
+  // ตั้งค่าให้ ping มาที่ /api/ping ทุก 10-14 นาที เพื่อกัน service sleep (free tier sleep หลังไม่มี traffic 15 นาที)
 });
 
 // เพิ่ม routes สำหรับ messages, redeemRequests, settings
 app.patch('/api/messages/:id', async (req, res) => {
   const db2 = await readDB();
-  if (!db2.messages) db2.messages = {};
-  db2.messages[req.params.id] = { ...db2.messages[req.params.id], ...req.body };
-  await writeDB(db2);
+  const merged = { ...(db2.messages && db2.messages[req.params.id]), ...req.body };
+  await updateFields({ [`messages.${req.params.id}`]: merged });
   res.json({ ok: true });
 });
 
 app.delete('/api/messages/:id', async (req, res) => {
   const db2 = await readDB();
-  if (db2.messages) delete db2.messages[req.params.id];
-  await writeDB(db2);
+  if (db2.messages && db2.messages[req.params.id]) {
+    await deleteField(`messages.${req.params.id}`);
+  }
   res.json({ ok: true });
 });
 
 app.patch('/api/redeemRequests/:id', async (req, res) => {
   const db2 = await readDB();
-  if (!db2.redeemRequests) db2.redeemRequests = {};
-  db2.redeemRequests[req.params.id] = { ...db2.redeemRequests[req.params.id], ...req.body };
-  await writeDB(db2);
+  const merged = { ...(db2.redeemRequests && db2.redeemRequests[req.params.id]), ...req.body };
+  await updateFields({ [`redeemRequests.${req.params.id}`]: merged });
   res.json({ ok: true });
 });
 
 app.patch('/api/settings/:key', async (req, res) => {
-  const db2 = await readDB();
-  if (!db2.settings) db2.settings = {};
-  db2.settings[req.params.key] = req.body[req.params.key] || req.body;
-  await writeDB(db2);
+  const key = req.params.key;
+  const value = req.body[key] !== undefined ? req.body[key] : req.body;
+  await readDB();
+  await updateFields({ [`settings.${key}`]: value });
   res.json({ ok: true });
 });
 
 app.patch('/api/markread/:studentId', async (req, res) => {
   const db2 = await readDB();
   const { from } = req.body;
-  Object.values(db2.messages || {}).forEach(m => {
-    if (m.studentId === req.params.studentId && m.from === from) m.read = true;
+  const updates = {};
+  Object.entries(db2.messages || {}).forEach(([mid, m]) => {
+    if (m.studentId === req.params.studentId && m.from === from && !m.read) {
+      updates[`messages.${mid}`] = { ...m, read: true };
+    }
   });
-  await writeDB(db2);
+  if (Object.keys(updates).length > 0) {
+    await updateFields(updates);
+  }
   res.json({ ok: true });
 });
