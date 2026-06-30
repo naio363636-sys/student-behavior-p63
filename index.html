@@ -143,7 +143,6 @@ label{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;font-wei
 @keyframes legendaryGlow{0%,100%{box-shadow:0 0 15px rgba(255,215,0,.8),0 0 30px rgba(255,100,0,.5)}50%{box-shadow:0 0 25px rgba(255,215,0,1),0 0 50px rgba(255,100,0,.8),0 0 70px rgba(255,0,255,.4)}}
 @keyframes legendaryRing{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes cardLegendaryGlow{0%,100%{box-shadow:0 0 8px rgba(255,215,0,.7),0 0 20px rgba(255,100,0,.4),inset 0 0 8px rgba(255,215,0,.15)}50%{box-shadow:0 0 18px rgba(255,215,0,1),0 0 40px rgba(255,100,0,.7),0 0 60px rgba(255,0,200,.3),inset 0 0 15px rgba(255,215,0,.25)}}
-@keyframes notCheckedPulse{0%,100%{box-shadow:0 2px 6px rgba(226,75,74,.5)}50%{box-shadow:0 2px 12px rgba(226,75,74,.9)}}
 @keyframes cardLegendaryBorder{0%,100%{border-color:#FFD700}33%{border-color:#FF4500}66%{border-color:#FF00CC}}
 @keyframes legendaryRing2{from{transform:rotate(360deg)}to{transform:rotate(0deg)}}
 @keyframes uncommonFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
@@ -273,28 +272,6 @@ label{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;font-wei
   <button id="lightbox-close" onclick="closeLightbox()" style="position:fixed;top:12px;right:12px;background:rgba(255,255,255,.2);border:none;border-radius:50%;width:44px;height:44px;color:white;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10000">✕</button>
   <img id="lightbox-img" src="" alt="" style="width:100%;max-width:100vw;height:auto;object-fit:contain;display:block;margin:0 auto;touch-action:manipulation">
   <div id="lightbox-hint" style="position:fixed;bottom:16px;left:0;right:0;text-align:center;color:rgba(255,255,255,.5);font-size:12px">แตะนอกรูปเพื่อปิด</div>
-</div>
-<div id="taskModal" class="task-modal" onclick="if(event.target===this)closeTaskModal()">
-  <div class="task-modal-box">
-    <div style="font-size:18px;font-weight:800;font-family:Prompt,sans-serif;margin-bottom:1.25rem;color:var(--text)">📋 ตั้งค่างานประจำสัปดาห์</div>
-    <div style="margin-bottom:1rem">
-      <label style="font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">ชื่อรอบ</label>
-      <input id="ti_label" type="text" placeholder="เช่น อาทิตย์ที่ 5" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:Sarabun,sans-serif">
-    </div>
-    <div style="margin-bottom:1rem">
-      <label style="font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">จำนวนงานทั้งหมด</label>
-      <input id="ti_total" type="number" placeholder="เช่น 50" min="0" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:Sarabun,sans-serif">
-    </div>
-    <div style="margin-bottom:1.5rem">
-      <label style="font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">วันที่กำหนด</label>
-      <input id="ti_date" type="text" placeholder="เช่น 2 มิ.ย. - 6 มิ.ย. 2569" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:Sarabun,sans-serif">
-    </div>
-    <div id="ti_msg" style="font-size:13px;color:var(--green);text-align:center;margin-bottom:.75rem;display:none"></div>
-    <div style="display:flex;gap:8px">
-      <button onclick="closeTaskModal()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:white;font-family:Sarabun,sans-serif;font-size:14px;cursor:pointer">ยกเลิก</button>
-      <button onclick="doSaveTaskInfo()" style="flex:2;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#1A6BC4,#4DA0F0);color:white;font-family:Sarabun,sans-serif;font-size:14px;font-weight:700;cursor:pointer"><i class="ti ti-device-floppy"></i> บันทึก</button>
-    </div>
-  </div>
 </div>
 <div id="ackCardModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:center;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeAckCardModal()">
   <div style="background:white;border-radius:20px;padding:1.25rem;width:100%;max-width:420px;margin:auto">
@@ -665,7 +642,7 @@ function vLeaderboard(){
   }
 
   // อันดับรวม (พฤติกรรม + งาน)
-  const byCombined=entries.map(([sid,s])=>({sid,s,combined:tot(s)+(s.taskDone||0),score:tot(s),task:s.taskDone||0}))
+  const byCombined=entries.map(([sid,s])=>{const ws=getSubjectWorkStats(sid);return{sid,s,combined:tot(s)+ws.done,score:tot(s),task:ws.done};})
     .sort((a,b)=>b.combined-a.combined).slice(0,20);
   const combinedCards=byCombined.map((r,i)=>makeCard(r,i,
     `<span style="color:${r.combined>0?'#9C27B0':'var(--muted)'};font-size:11px;line-height:1.4">⭐${r.score>=0?'+':''}${r.score} 📋${r.task}</span>`
@@ -677,7 +654,7 @@ function vLeaderboard(){
     `<span style="color:${r.score>=0?'var(--green)':'var(--red)'}">${r.score>=0?'+':''}${r.score}</span>`
   )).join('');
 
-  const byTask=entries.map(([sid,s])=>({sid,s,pct:taskPct(s),done:s.taskDone||0}))
+  const byTask=entries.map(([sid,s])=>{const ws=getSubjectWorkStats(sid);return{sid,s,pct:taskPct(s,sid),done:ws.done};})
     .sort((a,b)=>b.pct-a.pct||b.done-a.done).slice(0,20);
   const taskCards=byTask.map((r,i)=>makeCard(r,i,
     `<span style="color:${r.pct===100?'var(--green)':r.pct>0?'var(--blue)':'var(--red)'}">${r.pct===100?'✓':''}${r.pct}%</span>`
@@ -698,10 +675,10 @@ function vLeaderboard(){
     </div>
   </div>`;}
 function hwSum(hw){if(!hw)return{done:0,total:0};const vals=Object.values(hw);return{done:vals.filter(v=>v&&v.done).length,total:vals.length};}
-function taskPct(s){const total=s.taskTotal||0;const done=s.taskDone||0;if(total===0)return 0;return Math.round(done/total*100);}
-function taskColor(s){const p=taskPct(s);if(p===100)return'#2E7D32';if(p>=71)return'#1565C0';if(p>=41)return'#F57F17';if(p>=11)return'#E65100';return'#B71C1C';}
-function taskColorBg(s){const p=taskPct(s);if(p===100)return'#E8F5E9';if(p>=71)return'#E3F2FD';if(p>=41)return'#FFFDE7';if(p>=11)return'#FFF3E0';return'#FFEBEE';}
-function taskEmoji(s){const p=taskPct(s);if(p===100)return'⭐';if(p>=71)return'👍';if(p>=41)return'💪';if(p>=11)return'⚡';return'😬';}
+function taskPct(s,sid){const ws=getSubjectWorkStats(sid||S.sid);if(ws.total===0)return 0;return Math.round(ws.done/ws.total*100);}
+function taskColor(s,sid){const p=taskPct(s,sid);if(p===100)return'#2E7D32';if(p>=71)return'#1565C0';if(p>=41)return'#F57F17';if(p>=11)return'#E65100';return'#B71C1C';}
+function taskColorBg(s,sid){const p=taskPct(s,sid);if(p===100)return'#E8F5E9';if(p>=71)return'#E3F2FD';if(p>=41)return'#FFFDE7';if(p>=11)return'#FFF3E0';return'#FFEBEE';}
+function taskEmoji(s,sid){const p=taskPct(s,sid);if(p===100)return'⭐';if(p>=71)return'👍';if(p>=41)return'💪';if(p>=11)return'⚡';return'😬';}
 function hwPct(hw){const s=hwSum(hw);return s.total===0?0:Math.round(s.done/s.total*100);}
 function hwColor(hw){const p=hwPct(hw);if(p===100)return'#2E7D32';if(p>=71)return'#1565C0';if(p>=41)return'#F57F17';if(p>=11)return'#E65100';return'#B71C1C';}
 function hwColorBg(hw){const p=hwPct(hw);if(p===100)return'#E8F5E9';if(p>=71)return'#E3F2FD';if(p>=41)return'#FFFDE7';if(p>=11)return'#FFF3E0';return'#FFEBEE';}
@@ -1155,8 +1132,10 @@ const AVATAR_TIERS = {
 
 function getPlayerRank(s){
   const entries=Object.entries(DB.students||{});
-  const myScore=tot(s)+(s.taskDone||0);
-  const ranked=entries.map(([,st])=>tot(st)+(st.taskDone||0)).sort((a,b)=>b-a);
+  const mySid=(entries.find(([,st])=>st===s)||[])[0];
+  const myDone=mySid?getSubjectWorkStats(mySid).done:0;
+  const myScore=tot(s)+myDone;
+  const ranked=entries.map(([id,st])=>tot(st)+getSubjectWorkStats(id).done).sort((a,b)=>b-a);
   const rank=ranked.indexOf(myScore)+1;
   return rank||999;
 }
@@ -1202,15 +1181,13 @@ function vTList(){
     const shortN=shortName(s.name);
     const firstName=shortN.split(' ')[0];
     const scoreCol=t>0?'var(--green)':t<0?'var(--red)':'var(--muted)';
-    const hc=taskColor(s);const hbg=taskColorBg(s);const hp=taskPct(s);const isComplete=hp===100;
+    const hc=taskColor(s,sid);const hbg=taskColorBg(s,sid);const hp=taskPct(s,sid);const isComplete=hp===100;const _ws=getSubjectWorkStats(sid);
     const avatarContent=s.photo
       ?`<img src="${s.photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
       :s.chosenAnimal?drawAnimalSVG(animal,g,76):`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:${g?'var(--pink-dark)':'var(--blue-dark)'};background:${g?'var(--pink-light)':'var(--blue-light)'}">${ini(s.name)}</div>`;
-    return`<div onclick="selStu('${sid}')" style="display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;padding:1rem .5rem .85rem;border-radius:18px;background:${hbg};border:${s.notChecked?'3px solid #E24B4A':'2px solid '+hc};box-shadow:${s.notChecked?'0 0 0 3px rgba(226,75,74,.25),var(--shadow-sm)':'var(--shadow-sm)'};transition:all .2s;position:relative;${(()=>{const _at=getAvatarTier(s.chosenAnimal||'');return s.chosenAnimal&&_at.tier==='legendary'?'animation:cardLegendaryBorder 2s linear infinite,cardLegendaryGlow 1.8s ease-in-out infinite;border-width:2.5px;':'';})()} " onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
-      ${s.notChecked?`<div title="ยังไม่ได้ตรวจงาน" style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#E24B4A;color:white;font-size:10px;font-weight:700;padding:2px 10px;border-radius:999px;white-space:nowrap;animation:notCheckedPulse 1.5s ease-in-out infinite;z-index:3">⚠️ ยังไม่ตรวจ</div>`:''}
+    return`<div onclick="selStu('${sid}')" style="display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;padding:1rem .5rem .85rem;border-radius:18px;background:${hbg};border:2px solid ${hc};box-shadow:var(--shadow-sm);transition:all .2s;position:relative;${(()=>{const _at=getAvatarTier(s.chosenAnimal||'');return s.chosenAnimal&&_at.tier==='legendary'?'animation:cardLegendaryBorder 2s linear infinite,cardLegendaryGlow 1.8s ease-in-out infinite;border-width:2.5px;':'';})()} " onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
       ${pend>0||unread>0?`<div style="position:absolute;top:6px;right:6px;width:10px;height:10px;background:#E24B4A;border-radius:50%;border:2px solid white"></div>`:''}
       <div style="position:absolute;top:6px;left:8px;font-size:10px;font-weight:700;color:var(--muted);line-height:1">${s.no||''}</div>
-      <button onclick="doToggleNotChecked('${sid}',event)" title="${s.notChecked?'ยกเลิกสถานะยังไม่ตรวจ':'มาร์คว่ายังไม่ได้ตรวจงาน'}" style="position:absolute;bottom:4px;right:4px;z-index:3;background:${s.notChecked?'#E24B4A':'white'};color:${s.notChecked?'white':'#999'};border:1px solid ${s.notChecked?'#E24B4A':'var(--border)'};border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)"><i class="ti ${s.notChecked?'ti-eye-off':'ti-eye-check'}"></i></button>
       ${s.chosenAnimal?`<div style="position:absolute;top:4px;right:${pend>0||unread>0?'18':'4'}px;z-index:2">
         ${(()=>{const _at=getAvatarTier(s.chosenAnimal);const _r=_at.tier==='legendary'?'conic-gradient(from 0deg,#FFD700,#FF4500,#FF00CC,#00FFFF,#FFD700)':_at.tier==='rare'?'conic-gradient(from 0deg,#00C8FF,#7B2FBE,#FF00AA,#00C8FF)':_at.tier==='uncommon'?'conic-gradient(from 0deg,#2ECC40,#00FF88,#00C8FF,#2ECC40)':null;const _b=_at.tier==='legendary'?'#FFD700':_at.tier==='rare'?'#00C8FF':_at.tier==='uncommon'?'#2ECC40':g?'#F4BFDA':'#B5D1F5';const _a=_at.tier==='legendary'?'legendaryFloat 2s ease-in-out infinite,legendaryGlow 1.5s ease-in-out infinite':_at.tier==='rare'?'rareFloat 2.5s ease-in-out infinite,rareGlow 2s ease-in-out infinite':'none';return`<div style="position:relative;width:28px;height:28px;display:flex;align-items:center;justify-content:center">${_r?`<div style="position:absolute;inset:-3px;border-radius:50%;background:${_r};animation:legendaryRing 2s linear infinite;z-index:0;filter:blur(0.5px)"></div>`:''}<div style="position:relative;z-index:1;width:26px;height:26px;border-radius:50%;overflow:hidden;border:1.5px solid ${_b};animation:${_a}">${drawAnimalSVG(s.chosenAnimal,g,26)}</div></div>`;})()}
       </div>`:''}
@@ -1219,11 +1196,11 @@ function vTList(){
         ${avatarContent}
       </div>
       <div style="font-size:12px;font-weight:700;color:${hc};text-align:center;line-height:1.3;width:100%;padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-        ${isComplete?'🏆 ':taskEmoji(s)+' '}${firstName}${(s.parentAcks||[]).some(a=>a.roundKey===getCurrentAckKey())?' <span title="ผู้ปกครองรับทราบรอบนี้แล้ว">✅</span>':''}
+        ${isComplete?'🏆 ':taskEmoji(s,sid)+' '}${firstName}${(s.parentAcks||[]).some(a=>a.roundKey===getCurrentAckKey())?' <span title="ผู้ปกครองรับทราบรอบนี้แล้ว">✅</span>':''}
       </div>
       <div style="font-size:20px;font-weight:900;color:${scoreCol};text-shadow:0 1px 4px rgba(0,0,0,.15);letter-spacing:.5px">${t>=0?'+':''}${t}</div>
       <div style="font-size:10px;font-weight:700;color:${isComplete?'#2E7D32':hc};background:${hbg};border:1px solid ${hc};border-radius:999px;padding:2px 8px">
-        ${isComplete?'งานครบ ✓':`ส่ง ${s.taskDone||0}/${s.taskTotal||0}`}
+        ${isComplete?'งานครบ ✓':`ส่ง ${_ws.done}/${_ws.total}`}
       </div>
     </div>`;
   }).join('');
@@ -1279,22 +1256,6 @@ function vTList(){
         <button class="btn" style="font-size:13px" onclick="doTLogout()"><i class="ti ti-logout"></i> ออก</button>
       </div>
     </div>
-    ${(()=>{
-      const ti=DB.taskInfo||{};
-      const label=ti.label||'';
-      const total=ti.total||0;
-      const date=ti.date||'';
-      return`<div onclick="doSetTaskInfo()" style="cursor:pointer;background:linear-gradient(135deg,#1A6BC4,#4DA0F0);border-radius:16px;padding:14px 18px;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 4px 16px rgba(26,107,196,.3)">
-        <div style="flex:1;text-align:center">
-          <div style="color:rgba(255,255,255,.8);font-size:13px;font-weight:600;margin-bottom:4px"><i class="ti ti-clipboard-list"></i> งานประจำสัปดาห์</div>
-          <div style="color:white;font-size:clamp(20px,3vw,28px);font-weight:800;font-family:Prompt,sans-serif">${label||'ยังไม่ได้ตั้งชื่อรอบ'} ${total?`· ${total} งาน`:''}</div>
-          ${date?`<div style="color:rgba(255,255,255,.75);font-size:13px;margin-top:4px">📅 ${date}</div>`:''}
-        </div>
-        <div style="background:rgba(255,255,255,.2);border-radius:12px;padding:8px 14px;color:white;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0">
-          <i class="ti ti-settings"></i> ตั้งค่า
-        </div>
-      </div>`;
-    })()}
     ${vLeaderboard()}
     <div class="sw" style="position:sticky;top:56px;z-index:99;background:var(--bg);padding-bottom:.5rem"><i class="ti ti-search"></i>
       <input type="text" placeholder="ค้นหาชื่อหรือเลขประจำตัว" oninput="S.search=this.value;render(true)" value="${S.search||''}">
@@ -1474,7 +1435,7 @@ function vTList(){
           : `<div style="background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--amber);text-align:center">⏳ ผู้ปกครองต้องส่งหลักฐานการยืนยันมาที่ไลน์ส่วนตัวของครู<br>จึงจะได้รับคะแนน<br><span style="font-size:11px;color:var(--muted)">กดยืนยันได้ที่แท็บ "✅ รับทราบ" ในหน้ารวมนักเรียน</span></div>`}
       </div>`;
       }
-      const prog=q.type==='hw'?(s.taskDone||0):q.type==='sig'?(s.sig||0):q.type==='score'?tot(s):0;
+      const prog=q.type==='hw'?getSubjectWorkStats(S.sid).done:q.type==='score'?tot(s):0;
       const total=q.target;
       const pct=Math.min(100,Math.round(prog/total*100));
       const done=prog>=total;
@@ -1580,11 +1541,13 @@ function vTList(){
     </div>
     <div class="stats">
       <div class="sc"><div class="sl">คะแนนพฤติกรรม</div><div class="sv" style="color:${t>=0?'var(--green)':'var(--red)'}">${t>=0?'+':''}${t}</div></div>
-      <div class="sc"><div class="sl">งานทั้งหมด</div><div class="sv" style="color:var(--muted)">${s.taskTotal||0}</div></div>
-      <div class="sc" style="cursor:pointer" onclick="doEditTaskDone()"><div class="sl">เสร็จแล้ว ✅</div><div class="sv" style="color:${taskColor(s)}">${s.taskDone||0}</div></div>
-      <div class="sc"><div class="sl">ยังไม่เสร็จ ❌</div><div class="sv" style="color:${(s.taskTotal||0)-(s.taskDone||0)>0?'var(--red)':'var(--green)'}">${(s.taskTotal||0)-(s.taskDone||0)}</div></div>
-      <div class="sc" style="cursor:pointer" onclick="doEditSigned()"><div class="sl">มีลายเซ็น ✍️</div><div class="sv" style="color:var(--green)">${s.sig||0}</div></div>
-      <div class="sc"><div class="sl">รอลายเซ็น ⏳</div><div class="sv" style="color:${(s.taskDone||0)-(s.sig||0)>0?'var(--amber)':'var(--green)'}">${(s.taskDone||0)-(s.sig||0)}</div></div>
+      ${(()=>{
+        const ws=getSubjectWorkStats(S.sid);
+        return `<div class="sc"><div class="sl">งานทั้งหมด</div><div class="sv" style="color:var(--muted)">${ws.total}</div></div>
+        <div class="sc"><div class="sl">เสร็จแล้ว ✅</div><div class="sv" style="color:${ws.done>0?'var(--green)':'var(--muted)'}">${ws.done}</div></div>
+        <div class="sc"><div class="sl">ยังไม่เสร็จ ❌</div><div class="sv" style="color:${ws.missing>0?'var(--red)':'var(--green)'}">${ws.missing}</div></div>
+        <div class="sc"><div class="sl">รอตรวจ ⏳</div><div class="sv" style="color:${ws.pending>0?'#C9760A':'var(--green)'}">${ws.pending}</div></div>`;
+      })()}
       <div class="sc"><div class="sl">แลกแล้ว</div><div class="sv" style="color:var(--blue)">${rl.length}</div></div>
     </div>
     ${vTeacherAckStatus(s)}
@@ -1806,7 +1769,7 @@ function vPView(){
         </div>
       </div>`;
       }
-      const prog=q.type==='hw'?(s.taskDone||0):q.type==='sig'?(s.sig||0):tot(s);
+      const prog=q.type==='hw'?getSubjectWorkStats(S.sid).done:tot(s);
       const pct=Math.min(100,Math.round(prog/(q.target||1)*100));
       const done=prog>=q.target;
       const earnedIds=(s.questProgress||{})[q.id]||[];
@@ -1864,15 +1827,8 @@ function vPView(){
     </div>`;
     setTimeout(()=>{const cb=document.getElementById('chatboxP');if(cb)cb.scrollTop=cb.scrollHeight;doMarkRead('${S.sid}','teacher');},80);
   }
-  const taskInfoP=DB.taskInfo||{};
-  const taskBannerP=taskInfoP.label||taskInfoP.total?`<div style="background:linear-gradient(135deg,#1A6BC4,#4DA0F0);border-radius:14px;padding:12px 16px;margin-bottom:1rem;color:white;box-shadow:0 4px 12px rgba(26,107,196,.25)">
-    <div style="font-size:11px;opacity:.8;margin-bottom:2px"><i class="ti ti-clipboard-list"></i> งานประจำสัปดาห์</div>
-    <div style="font-size:16px;font-weight:800;font-family:Prompt,sans-serif">${taskInfoP.label||''} ${taskInfoP.total?`· ${taskInfoP.total} งาน`:''}</div>
-    ${taskInfoP.date?`<div style="font-size:12px;opacity:.75;margin-top:2px">📅 ${taskInfoP.date}</div>`:''}
-  </div>`:'';
   return`
     <button class="btn-back" onclick="doPLogout()"><i class="ti ti-logout"></i> ออกจากระบบ</button>
-    ${taskBannerP}
     <div class="student-header" style="position:relative;padding:1rem;border-radius:var(--r);${(()=>{const ph=profileCardHeader(s);return ph.borderStyle;})()} ">
       ${(()=>{const ph=profileCardHeader(s);return ph.stars;})()}
       <div style="display:flex;align-items:center;gap:12px">
@@ -1908,11 +1864,13 @@ function vPView(){
     </div>
     <div class="stats">
       <div class="sc"><div class="sl">คะแนนพฤติกรรม</div><div class="sv" style="color:${t>=0?'var(--green)':'var(--red)'}">${t>=0?'+':''}${t}</div></div>
-      <div class="sc"><div class="sl">งานทั้งหมด</div><div class="sv" style="color:var(--muted)">${s.taskTotal||0}</div></div>
-      <div class="sc"><div class="sl">เสร็จแล้ว</div><div class="sv" style="color:${taskColor(s)}">${s.taskDone||0}</div></div>
-      <div class="sc"><div class="sl">ยังไม่เสร็จ</div><div class="sv" style="color:${(s.taskTotal||0)-(s.taskDone||0)>0?'var(--red)':'var(--green)'}">${(s.taskTotal||0)-(s.taskDone||0)}</div></div>
-      <div class="sc"><div class="sl">มีลายเซ็น ✍️</div><div class="sv" style="color:var(--green)">${s.sig||0}</div></div>
-      <div class="sc"><div class="sl">รอลายเซ็น ⏳</div><div class="sv" style="color:${(s.taskDone||0)-(s.sig||0)>0?'var(--amber)':'var(--green)'}">${(s.taskDone||0)-(s.sig||0)}</div></div>
+      ${(()=>{
+        const ws=getSubjectWorkStats(S.sid);
+        return `<div class="sc"><div class="sl">งานทั้งหมด</div><div class="sv" style="color:var(--muted)">${ws.total}</div></div>
+        <div class="sc"><div class="sl">เสร็จแล้ว</div><div class="sv" style="color:${ws.done>0?'var(--green)':'var(--muted)'}">${ws.done}</div></div>
+        <div class="sc"><div class="sl">ยังไม่เสร็จ</div><div class="sv" style="color:${ws.missing>0?'var(--red)':'var(--green)'}">${ws.missing}</div></div>
+        <div class="sc"><div class="sl">รอตรวจ</div><div class="sv" style="color:${ws.pending>0?'#C9760A':'var(--green)'}">${ws.pending}</div></div>`;
+      })()}
       <div class="sc"><div class="sl">แลกแล้ว</div><div class="sv" style="color:var(--blue)">${rl.length}</div></div>
     </div>
     ${vParentAckBanner(s)}
@@ -2278,6 +2236,27 @@ const SUBJECT_ICON = {
 };
 function subjectIcon(subject){ return SUBJECT_ICON[subject] || '📚'; }
 
+// รวมสถานะงานของนักเรียน 1 คน จากทุกวิชาที่ครูประจำวิชาเพิ่มไว้ (แทนระบบ taskInfo เดิมที่ครูประจำชั้นตั้งเอง)
+// total = จำนวนใบงานทั้งหมดที่มีอยู่ในระบบ (รวมทุกวิชา), done/missing/pending = ผลรวมสถานะที่ครูแต่ละวิชาติ๊กให้คนนี้
+function getSubjectWorkStats(sid){
+  let total=0, done=0, missing=0, pending=0;
+  SUBJECT_TEACHERS.forEach(teacher=>{
+    teacher.subjects.forEach(subject=>{
+      const data = getSubjectData(teacher.pin, subject);
+      const cols = data.columns||[];
+      const checks = (data.checks||{})[sid]||{};
+      cols.forEach(c=>{
+        total++;
+        const st = getCheckStatus(checks, c.id);
+        if(st==='done') done++;
+        else if(st==='missing') missing++;
+        else pending++;
+      });
+    });
+  });
+  return {total, done, missing, pending};
+}
+
 function renderStudentSubjectWork(sid){
   if(ALL_SUBJECTS.length===0){
     return `<div style="text-align:center;color:var(--muted);font-size:13px;padding:1.5rem">ยังไม่มีวิชาในระบบ</div>`;
@@ -2536,39 +2515,6 @@ async function doMMarkRowAllDone(sid){
 
 
 
-function doSetTaskInfo(){
-  const ti=DB.taskInfo||{};
-  document.getElementById('ti_label').value=ti.label||'';
-  document.getElementById('ti_total').value=ti.total||'';
-  document.getElementById('ti_date').value=ti.date||'';
-  document.getElementById('ti_msg').style.display='none';
-  document.getElementById('taskModal').classList.add('show');
-}
-function closeTaskModal(){
-  document.getElementById('taskModal').classList.remove('show');
-}
-// บันทึก snapshot ของรอบงานปัจจุบัน (ก่อนจะเปลี่ยนเป็นรอบใหม่) — ใช้คำนวณกราฟพัฒนาการรายสัปดาห์ในอนาคต
-// เก็บ taskDone/taskTotal/sig ของทุกคน ณ ตอนจบรอบนั้น พร้อม label ของรอบ และเวลาที่บันทึก
-async function recordWeeklySnapshot(){
-  const prevLabel = (DB.taskInfo && DB.taskInfo.label) ? DB.taskInfo.label : null;
-  if(!prevLabel) return; // ยังไม่มีรอบงานมาก่อนเลย ไม่ต้องเก็บ (เช่นรอบแรกสุดของการใช้งาน)
-  if(!DB.weeklySnapshots) DB.weeklySnapshots = [];
-  // กันเก็บซ้ำถ้า label เดิมถูกบันทึกไปแล้ว (เช่นครูกดบันทึกซ้ำโดยไม่เปลี่ยน label จริง)
-  if(DB.weeklySnapshots.some(sn=>sn.weekLabel===prevLabel)) return;
-  const studentsSnap = {};
-  Object.entries(DB.students||{}).forEach(([sid, st])=>{
-    studentsSnap[sid] = {
-      taskDone: st.taskDone||0,
-      taskTotal: st.taskTotal||0,
-      sig: st.sig||0,
-      score: tot(st) // คะแนนสะสมรวม ณ ตอนนั้น (จาก logs)
-    };
-  });
-  DB.weeklySnapshots.push({weekLabel: prevLabel, ts: Date.now(), students: studentsSnap});
-  if(DB.weeklySnapshots.length > 52) DB.weeklySnapshots = DB.weeklySnapshots.slice(-52); // เก็บแค่ ~1 ปีล่าสุด กัน array บวม
-  try{ await api('PATCH', '/settings/weeklySnapshots', {weeklySnapshots: DB.weeklySnapshots}); }catch(e){}
-}
-
 // ===== GROWTH CHART (กราฟพัฒนาการ) =====
 let _gcChartInstance = null;
 
@@ -2706,190 +2652,7 @@ function renderGrowthCharts(){
   }
 }
 
-async function doSaveTaskInfo(){
-  const label=document.getElementById('ti_label').value.trim();
-  const totalVal=document.getElementById('ti_total').value.trim();
-  const date=document.getElementById('ti_date').value.trim();
-  const n=parseInt(totalVal);
-  if(!label||isNaN(n)||n<0){
-    const msg=document.getElementById('ti_msg');
-    msg.textContent='กรุณากรอกข้อมูลให้ครบ';
-    msg.style.color='var(--red)';
-    msg.style.display='block';
-    return;
-  }
-  const btn=document.querySelector('#taskModal button:last-child');
-  btn.textContent='กำลังบันทึก...';btn.disabled=true;
-  // เก็บ snapshot ของรอบที่กำลังจะปิดไป (ใช้ดูกราฟพัฒนาการรายสัปดาห์ในอนาคต) — เก็บก่อนเปลี่ยนค่า DB.taskInfo
-  recordWeeklySnapshot();
-  DB.taskInfo={label,total:n,date};
-  Object.values(DB.students).forEach(st=>{
-    st.taskTotal=n;
-    if((st.taskDone||0)>n)st.taskDone=n;
-  });
-  await api('POST','/data',DB);
-  await new Promise(r=>setTimeout(r,800));
-  await api('POST','/data',DB);
-  const msg=document.getElementById('ti_msg');
-  msg.textContent=`✅ บันทึกแล้ว: ${label} · ${n} งาน`;
-  msg.style.color='var(--green)';
-  msg.style.display='block';
-  btn.textContent='บันทึก';btn.disabled=false;
-  render();
-  setTimeout(()=>closeTaskModal(),1500);
-}
-async function doEditTaskTotal(){
-  const s=DB.students[S.sid];if(!s)return;
-  const cur=s.taskTotal||0;
-  const val=prompt('ตั้งจำนวนงานทั้งหมด (ครูเท่านั้น)',cur);
-  if(val===null)return;
-  const n=parseInt(val);
-  if(isNaN(n)||n<0){alert('กรอกตัวเลขที่ถูกต้อง');return;}
-  // ถามว่าจะใช้กับทุกคนไหม
-  const applyAll=confirm(`ตั้งงานทั้งหมด ${n} ชิ้น\nต้องการใช้กับนักเรียนทุกคนเลยไหม?`);
-  if(applyAll){
-    // อัปเดตทุกคนทีละคน (ป้องกัน server รับไม่ทัน)
-    const sids=Object.keys(DB.students);
-    for(const sid of sids){
-      const st=DB.students[sid];
-      st.taskTotal=n;
-      if((st.taskDone||0)>n)st.taskDone=n;
-      await api('PATCH',`/students/${sid}`,{taskTotal:n,taskDone:st.taskDone||0});
-    }
-    alert(`ตั้งงานทั้งหมด ${n} ชิ้นให้นักเรียนทุกคนแล้ว ✅`);
-  } else {
-    s.taskTotal=n;
-    if((s.taskDone||0)>n)s.taskDone=n;
-    await api('PATCH',`/students/${S.sid}`,{taskTotal:n,taskDone:s.taskDone||0});
-  }
-  render();
-}
-async function doEditTaskDone(){
-  if(_isSaving) return;
-  const s=DB.students[S.sid];if(!s)return;
-  const total=s.taskTotal||0;
-  const cur=s.taskDone||0;
-  if(total===0){alert('กรุณาตั้งจำนวนงานทั้งหมดก่อน');return;}
-  const val=prompt(`แก้ไขจำนวนเสร็จแล้ว (0-${total})`,cur);
-  if(val===null)return;
-  const n=parseInt(val);
-  if(isNaN(n)||n<0||n>total){alert(`กรอกตัวเลข 0-${total}`);return;}
-  _isSaving = true; showSavingToast();
-  stopPoll(); // กัน poll แทรกกลางทาง เขียนทับค่าที่เพิ่งกรอกก่อน server จะบันทึกเสร็จ
-  s.taskDone=n;
-  if((s.sig||0)>n) s.sig=n; // ตัดมีลายเซ็นไม่ให้เกินจำนวนที่ส่งแล้ว
-  render(true); // อัปเดตหน้าจอให้เห็นค่าใหม่ทันที ไม่ต้องรอ server ตอบ
-  try{
-    await api('PATCH',`/students/${S.sid}`,{taskDone:n,sig:s.sig||0});
-    await checkQuestProgress(S.sid);
-    await checkBuddyMissions(S.sid);
-  } finally {
-    startPoll();
-    _isSaving = false; hideSavingToast();
-  }
-  render(true);
-}
-async function doEditSigned(){
-  if(_isSaving) return;
-  const s=DB.students[S.sid];if(!s)return;
-  const done=s.taskDone||0;
-  const cur=s.sig||0;
-  if(done===0){alert('ยังไม่มีงานที่ส่งแล้ว');return;}
-  const val=prompt(`แก้ไขจำนวนที่มีลายเซ็นแล้ว (0-${done})`,cur);
-  if(val===null)return;
-  const n=parseInt(val);
-  if(isNaN(n)||n<0||n>done){alert(`กรอกตัวเลข 0-${done}`);return;}
-  _isSaving = true; showSavingToast();
-  stopPoll();
-  s.sig=n;
-  render(true);
-  try{
-    await api('PATCH',`/students/${S.sid}`,{sig:n});
-  } finally {
-    startPoll();
-    _isSaving = false; hideSavingToast();
-  }
-  render(true);
-}
-async function doMEditTaskDone(){
-  if(_isSaving) return;
-  const s=DB.students[S.sid];if(!s)return;
-  const total=s.taskTotal||0;
-  const cur=s.taskDone||0;
-  if(total===0){alert('ครูยังไม่ได้ตั้งจำนวนงานทั้งหมด');return;}
-  const val=prompt(`แก้ไขจำนวนเสร็จแล้ว (0-${total})`,cur);
-  if(val===null)return;
-  const n=parseInt(val);
-  if(isNaN(n)||n<0||n>total){alert(`กรอกตัวเลข 0-${total}`);return;}
-  _isSaving = true; showSavingToast();
-  stopPoll();
-  s.taskDone=n;
-  if((s.sig||0)>n) s.sig=n; // ตัดมีลายเซ็นไม่ให้เกินจำนวนที่ส่งแล้ว
-  render(true);
-  try{
-    await api('PATCH',`/students/${S.sid}`,{taskDone:n,sig:s.sig||0});
-    await checkQuestProgress(S.sid);
-    await checkBuddyMissions(S.sid);
-  } finally {
-    startPoll();
-    _isSaving = false; hideSavingToast();
-  }
-  render(true);
-}
-async function doMEditSigned(){
-  if(_isSaving) return;
-  const s=DB.students[S.sid];if(!s)return;
-  const done=s.taskDone||0;
-  const cur=s.sig||0;
-  if(done===0){alert('ยังไม่มีงานที่ส่งแล้ว');return;}
-  const val=prompt(`แก้ไขจำนวนที่มีลายเซ็นแล้ว (0-${done})`,cur);
-  if(val===null)return;
-  const n=parseInt(val);
-  if(isNaN(n)||n<0||n>done){alert(`กรอกตัวเลข 0-${done}`);return;}
-  _isSaving = true; showSavingToast();
-  stopPoll();
-  s.sig=n;
-  render(true);
-  try{
-    await api('PATCH',`/students/${S.sid}`,{sig:n});
-  } finally {
-    startPoll();
-    _isSaving = false; hideSavingToast();
-  }
-  render(true);
-}
-async function doEditHwCount(type){
-  const s=DB.students[S.sid];if(!s)return;
-  s.hw=s.hw||{};
-  const total=SUBJECTS.length;
-  const curDone=SUBJECTS.filter(subj=>s.hw[subj]?.done).length;
-  if(type==='done'){
-    const val=prompt('แก้ไขจำนวนส่งงาน (0-'+total+')',curDone);
-    if(val===null)return;
-    const n=parseInt(val);
-    if(isNaN(n)||n<0||n>total){alert('กรอกตัวเลข 0-'+total);return;}
-    // reset แล้ว mark n วิชาแรกเป็น done
-    SUBJECTS.forEach((subj,i)=>{s.hw[subj]=s.hw[subj]||{done:false,date:today()};s.hw[subj].done=i<n;if(i<n)s.hw[subj].date=today();});
-  } else {
-    const notDone=total-curDone;
-    const val=prompt('แก้ไขจำนวนยังไม่เสร็จ (0-'+total+')',notDone);
-    if(val===null)return;
-    const n=parseInt(val);
-    if(isNaN(n)||n<0||n>total){alert('กรอกตัวเลข 0-'+total);return;}
-    const newDone=total-n;
-    SUBJECTS.forEach((subj,i)=>{s.hw[subj]=s.hw[subj]||{done:false,date:today()};s.hw[subj].done=i<newDone;if(i<newDone)s.hw[subj].date=today();});
-  }
-  await api('PATCH',`/students/${S.sid}`,{hw:s.hw});
-  render();
-}
 function selStu(sid){S.sid=sid;S.tab='score';S.view='tstudent';render();}
-async function doToggleNotChecked(sid, ev){
-  if(ev) ev.stopPropagation(); // กันกดแล้วเด้งเข้าไปหน้านักเรียนคนนั้น
-  const s=DB.students[sid];if(!s)return;
-  s.notChecked = !s.notChecked;
-  render();
-  try{ await api('PATCH', `/students/${sid}`, {notChecked: s.notChecked}); }catch(e){}
-}
 function openEdit(sid){S.editSid=sid;render();}
 async function doSaveEdit(sid){
   const name=document.getElementById('edit_name')?.value?.trim()||'';
@@ -3087,11 +2850,6 @@ async function doToggleHw(subj){
   const cur=(s.hw||{})[subj]||{done:false};const newVal={done:!cur.done,date:today()};
   s.hw[subj]=newVal;
   await api('PATCH',`/students/${S.sid}/hw/${encodeURIComponent(subj)}`,newVal);render();
-}
-async function doMarkAllDone(sid){
-  const s=DB.students[sid];if(!s)return;
-  SUBJECTS.forEach(subj=>{s.hw[subj]={done:true,date:today()};});
-  await api('PATCH',`/students/${sid}`,{hw:s.hw});render();
 }
 async function doRedeem(name,cost){
   const s=DB.students[S.sid];if(!s||tot(s)<cost){alert('คะแนนไม่พอ');return;}
@@ -3678,7 +3436,6 @@ if('serviceWorker' in navigator){
       <label>ประเภท</label>
       <select id="q_type" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-family:Sarabun,sans-serif;font-size:14px;background:var(--bg);color:var(--text)" onchange="toggleQuestTargetField()">
         <option value="hw">📚 จำนวนงานที่ส่ง</option>
-        <option value="sig">✍️ จำนวนลายเซ็น</option>
         <option value="score">⭐ คะแนนพฤติกรรม</option>
         <option value="ack">✅ การรับทราบของผู้ปกครอง</option>
       </select>
@@ -3952,7 +3709,7 @@ async function checkQuestProgress(sid){
   for(const q of DB.quests){
     if(isQuestExpired(q)) continue; // ตัดภารกิจที่หมดเขตแล้ว ไม่ตรวจ/บวกคะแนนอีก
     if(q.type==='ack') continue; // ภารกิจรับทราบผู้ปกครอง — ครูต้องกดยืนยันเองเท่านั้น ไม่คำนวณอัตโนมัติ
-    const prog = q.type==='hw' ? (s.taskDone||0) : q.type==='sig' ? (s.sig||0) : tot(s);
+    const prog = q.type==='hw' ? getSubjectWorkStats(sid).done : tot(s);
     const earned = s.questProgress || {};
     // เก็บเป็นรายการ "เป้าหมาย (at) ที่ได้รับไปแล้ว" แทน index — กันปัญหา index เลื่อนตอนครูแก้ไข milestone ทีหลัง
     let earnedAtList = earned[q.id] || [];
@@ -4012,7 +3769,6 @@ async function checkQuestProgress(sid){
       <label>📐 เงื่อนไขการได้คะแนน (วัดผลจากอะไร)</label>
       <select id="bm_metric" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-family:Sarabun,sans-serif;font-size:14px;background:var(--bg);color:var(--text)">
         <option value="taskDone">📚 งานที่เสร็จ (taskDone)</option>
-        <option value="sig">✍️ ลายเซ็น (sig)</option>
       </select>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">การจับคู่ (เยอะ↔น้อย) ใช้จำนวนงานเสมอ — ตัวเลือกนี้กำหนดแค่ว่าจะนับความสำเร็จจากอะไร</div>
     </div>
@@ -4098,11 +3854,11 @@ async function checkQuestProgress(sid){
 // เก็บคู่ที่จับไว้ พร้อมค่าที่ครูแก้ไขได้ทีละคู่: [{sids:[a,b], target, reward, tier}]
 let _buddyEditablePairs = [];
 
-// อ่านค่าตามตัวชี้วัดที่ mission กำหนด (taskDone หรือ sig) — ใช้เช็คความสำเร็จของคู่ ไม่ใช่การจับคู่ (จับคู่ใช้ taskDone เสมอ)
-function getBuddyMetricValue(student, metric){
+// อ่านค่าตามตัวชี้วัดที่ mission กำหนด — ใช้เช็คความสำเร็จของคู่ (ตอนนี้เหลือแค่ taskDone เพราะลายเซ็นถูกเอาออกแล้ว)
+function getBuddyMetricValue(student, metric, sid){
   if(!student) return 0;
-  if(metric==='sig') return student.sig||0;
-  return student.taskDone||0;
+  if(metric==='sig') return 0; // ฟีเจอร์ลายเซ็นถูกเอาออกแล้ว เก็บไว้กันโค้ดเก่าพังเฉยๆ
+  return sid ? getSubjectWorkStats(sid).done : 0;
 }
 function buddyMetricLabel(metric){
   return metric==='sig' ? 'ลายเซ็น' : 'งานเสร็จ';
@@ -4127,14 +3883,15 @@ function renderBuddyPairsEditor(){
   };
   list.innerHTML = _buddyEditablePairs.map((p, idx)=>{
     const sA = DB.students[p.sids[0]]; const sB = DB.students[p.sids[1]];
-    const gap = Math.abs((sA?.taskDone||0)-(sB?.taskDone||0));
-    const tierKey = calcBuddyTier(sA?.taskDone||0, sB?.taskDone||0);
+    const doneA = getSubjectWorkStats(p.sids[0]).done; const doneB = getSubjectWorkStats(p.sids[1]).done;
+    const gap = Math.abs(doneA-doneB);
+    const tierKey = calcBuddyTier(doneA, doneB);
     const tm = tierMeta[tierKey];
     return `<div style="background:${tm.bg};border:1px solid ${tm.bd};border-radius:12px;padding:10px 12px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:8px">
         <span style="font-weight:700;color:${tm.color}">${tm.label}</span>
         <span style="color:var(--muted)">(ต่างกัน ${gap})</span>
-        <span style="flex:1;font-weight:600">${shortName(sA?.name||'')} (${sA?.taskDone||0}) 🤝 ${shortName(sB?.name||'')} (${sB?.taskDone||0})</span>
+        <span style="flex:1;font-weight:600">${shortName(sA?.name||'')} (${doneA}) 🤝 ${shortName(sB?.name||'')} (${doneB})</span>
         <button onclick="removeBuddyPair(${idx})" title="ลบคู่นี้" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:0 2px">✕</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -4216,7 +3973,7 @@ function calcBuddyTarget(doneA, doneB, targets){
 
 function computeAutoPairs(tiers, targets){
   const students = Object.entries(DB.students)
-    .map(([sid,s])=>({sid,done:(s.taskDone||0)}))
+    .map(([sid,s])=>({sid,done:getSubjectWorkStats(sid).done}))
     .sort((a,b)=>b.done-a.done);
   const pairs = [];
   const n = students.length;
@@ -4369,8 +4126,8 @@ async function checkBuddyMissions(sid){
       const sB = DB.students[sidB];
       if(!sA || !sB || pairTarget<=0) continue;
       const metric = mission.metric || 'taskDone';
-      const doneA = getBuddyMetricValue(sA, metric);
-      const doneB = getBuddyMetricValue(sB, metric);
+      const doneA = getBuddyMetricValue(sA, metric, sidA);
+      const doneB = getBuddyMetricValue(sB, metric, sidB);
 
       if(doneA >= pairTarget && doneB >= pairTarget){
         // ครบเป้าทั้งคู่ → ได้รางวัลเต็ม ทันที (วิธีเดียวที่ Buddy Mission จะให้คะแนนได้ในระบบนี้)
@@ -4677,8 +4434,8 @@ function vBuddyTabForStudent(sid){
     const pairKey = [...sids].sort().join('_');
     const isCompleted = !!(m.completed||{})[pairKey];
     const metric = m.metric || 'taskDone';
-    const myDone = getBuddyMetricValue(s, metric);
-    const buddyDone = getBuddyMetricValue(buddy, metric);
+    const myDone = getBuddyMetricValue(s, metric, sid);
+    const buddyDone = getBuddyMetricValue(buddy, metric, buddySid);
     const isFullSuccess = isCompleted && myDone>=pairTarget && buddyDone>=pairTarget;
     const myPct = Math.min(100, Math.round(myDone/pairTarget*100));
     const buddyPct = Math.min(100, Math.round(buddyDone/pairTarget*100));
