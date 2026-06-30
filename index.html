@@ -246,25 +246,6 @@ label{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;font-wei
 #lightbox-img{max-width:100%;max-height:90vh;object-fit:contain;border-radius:8px;touch-action:pinch-zoom;cursor:zoom-in;transition:transform .2s}
 #lightbox-close{position:fixed;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;border-radius:50%;width:40px;height:40px;color:white;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10000}
 #lightbox-hint{color:rgba(255,255,255,.5);font-size:12px;margin-top:10px}
-/* หมุนตารางเช็คงานครูประจำวิชา 90 องศา สำหรับมือถือจอแคบ ให้เห็นคอลัมน์ได้มากขึ้นโดยไม่ต้องพึ่งการหมุนเครื่องจริง */
-.mtable-rotate-wrap{
-  transform: rotate(90deg);
-  transform-origin: top left;
-  width: 100vh;
-  max-width: 100vh;
-  /* เลื่อนลงมาตามความกว้างเดิมของจอ เพื่อให้ตารางที่หมุนแล้วอยู่ในตำแหน่งที่มองเห็นพอดี ไม่ล้นออกขอบจอ */
-  margin-top: 100vw;
-  margin-left: 0;
-  position: relative;
-}
-.mtable-rotate-btn-mobile-only{ display:none; }
-@media (max-width: 768px){
-  .mtable-rotate-btn-mobile-only{ display:inline-flex; align-items:center; gap:4px; }
-}
-@media (min-width: 769px){
-  /* บนคอมพิวเตอร์ไม่ต้องหมุนเลย เพราะเห็นตารางเต็มอยู่แล้ว */
-  .mtable-rotate-wrap{ transform:none; width:100%; max-width:100%; margin:0; position:static; }
-}
 </style>
 </head>
 <body>
@@ -2372,12 +2353,12 @@ function vMList(){
   const students=Object.entries(DB.students||{}).sort(([,a],[,b])=>(parseInt(a.no)||999)-(parseInt(b.no)||999));
   const cols=data.columns||[];
 
-  const headerCols=cols.map(c=>`<th style="padding:8px 10px;font-size:12px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);min-width:90px;white-space:nowrap">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-      <span style="overflow:hidden;text-overflow:ellipsis;max-width:90px" title="${c.name}">${c.name}</span>
-      <div style="display:flex;gap:6px">
-        <button onclick="doMRenameColumn('${c.id}')" title="แก้ไขชื่องานนี้" style="background:none;border:none;color:var(--blue);font-size:11px;cursor:pointer">✏️ แก้ไข</button>
-        <button onclick="doMDeleteColumn('${c.id}')" title="ลบงานนี้" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer">✕ ลบ</button>
+  const headerCols=cols.map(c=>`<th style="padding:6px 4px;font-size:11px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);min-width:64px;white-space:nowrap">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+      <span style="overflow:hidden;text-overflow:ellipsis;max-width:64px" title="${c.name}">${c.name}</span>
+      <div style="display:flex;gap:4px">
+        <button onclick="doMRenameColumn('${c.id}')" title="แก้ไขชื่องานนี้" style="background:none;border:none;color:var(--blue);font-size:10px;cursor:pointer;padding:0">✏️</button>
+        <button onclick="doMDeleteColumn('${c.id}')" title="ลบงานนี้" style="background:none;border:none;color:var(--red);font-size:10px;cursor:pointer;padding:0">✕</button>
       </div>
     </div>
   </th>`).join('');
@@ -2391,12 +2372,12 @@ function vMList(){
     const cells=cols.map(c=>{
       const status=getCheckStatus(checks,c.id);
       const st=STATUS_STYLE[status];
-      return`<td style="padding:6px;text-align:center;border-bottom:1px solid var(--border-soft);background:${st.bg}">
-        <button onclick="doMCycleCheck('${sid}','${c.id}')" title="กดเพื่อสลับสถานะ: ยังไม่ได้ตรวจ → ส่งแล้ว → ยังไม่ส่ง" style="width:34px;height:34px;border-radius:8px;border:1.5px solid ${st.color};background:white;font-size:17px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center">${st.icon}</button>
+      return`<td style="padding:4px;text-align:center;border-bottom:1px solid var(--border-soft);background:${st.bg}">
+        <button onclick="doMCycleCheck('${sid}','${c.id}')" title="กดเพื่อสลับสถานะ: ยังไม่ได้ตรวจ → ส่งแล้ว → ยังไม่ส่ง" style="width:30px;height:30px;border-radius:8px;border:1.5px solid ${st.color};background:white;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center">${st.icon}</button>
       </td>`;
     }).join('');
     return`<tr>
-      <td style="padding:8px 10px;font-size:13px;font-weight:600;border-bottom:1px solid var(--border-soft);white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1">${s.no||''}. ${s.name}</td>
+      <td style="padding:6px 8px;font-size:12px;font-weight:600;border-bottom:1px solid var(--border-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:88px;position:sticky;left:0;background:var(--surface);z-index:1" title="${s.no||''}. ${s.name}">${s.no||''}. ${shortName(s.name)}</td>
       ${cells}
       <td style="padding:6px;text-align:center;border-bottom:1px solid var(--border-soft);white-space:nowrap">
         <button onclick="doMMarkRowAllDone('${sid}')" ${cols.length===0?'disabled':''} title="ติ๊กส่งครบทุกงานให้คนนี้" style="padding:6px 10px;border-radius:8px;border:1.5px solid ${allDone?'var(--green-bd)':'var(--border)'};background:${allDone?'var(--green-bg)':'var(--surface)'};color:${allDone?'#0B7A6B':'var(--muted)'};font-size:11px;font-weight:700;cursor:${cols.length===0?'not-allowed':'pointer'};white-space:nowrap;opacity:${cols.length===0?'.5':'1'}">${allDone?'✅ ครบแล้ว':'✓ ติ๊กครบ'}</button>
@@ -2422,19 +2403,17 @@ function vMList(){
     </div>
     ${subjectSwitcher}
     <div style="padding:0 1rem 1rem">
-      <div style="display:flex;gap:8px;margin-bottom:.75rem">
+      <div style="display:flex;gap:8px;margin-bottom:.5rem">
         <button onclick="doMAddColumn()" style="flex:1;padding:10px;border-radius:12px;border:2px dashed var(--blue);background:var(--blue-bg);color:var(--blue);font-family:Sarabun,sans-serif;font-size:14px;font-weight:600;cursor:pointer">
           <i class="ti ti-plus"></i> เพิ่มงาน
         </button>
-        <button onclick="S._mtableRotated=!S._mtableRotated;render(true)" class="mtable-rotate-btn-mobile-only" style="padding:10px 14px;border-radius:12px;border:1.5px solid ${S._mtableRotated?'var(--blue)':'var(--border)'};background:${S._mtableRotated?'var(--blue)':'var(--surface)'};color:${S._mtableRotated?'white':'var(--text)'};font-family:Sarabun,sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" title="หมุนตารางเป็นแนวนอนบนมือถือ">
-          <i class="ti ti-rotate-clockwise"></i> หมุนจอ
-        </button>
       </div>
-      <div class="${S._mtableRotated?'mtable-rotate-wrap':''}" style="overflow-x:auto;border-radius:14px;border:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:.5rem"><i class="ti ti-rotate-clockwise"></i> เลื่อนซ้าย-ขวาเพื่อดูงานเพิ่มเติม หรือหมุนมือถือเป็นแนวนอนเพื่อเห็นได้กว้างขึ้น</div>
+      <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--border)">
         <table style="border-collapse:collapse;width:100%;background:var(--surface)">
           <thead>
             <tr>
-              <th style="padding:8px 10px;font-size:12px;font-weight:700;text-align:left;border-bottom:2px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:2;white-space:nowrap">ชื่อนักเรียน</th>
+              <th style="padding:6px 8px;font-size:11px;font-weight:700;text-align:left;border-bottom:2px solid var(--border);position:sticky;left:0;background:var(--surface);z-index:2;white-space:nowrap;max-width:88px">ชื่อ</th>
               ${headerCols}
               <th style="padding:8px 10px;font-size:12px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);white-space:nowrap">ครบทุกงาน</th>
               <th style="padding:8px 10px;font-size:12px;font-weight:700;text-align:center;border-bottom:2px solid var(--border);white-space:nowrap">ส่ง/ไม่ส่ง/ยังไม่ตรวจ</th>
