@@ -294,9 +294,12 @@ label{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;font-wei
       <label>เลือกนักเรียน</label>
       <select id="gc_student_select" onchange="renderGrowthCharts()" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-family:Sarabun,sans-serif;font-size:14px;background:var(--bg);color:var(--text)"></select>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:1rem">
+    <div style="display:flex;gap:6px;margin-bottom:.75rem">
       <button onclick="S.gcTab='score';renderGrowthCharts()" id="gc_tab_score" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--blue);background:var(--blue-bg);color:var(--blue);font-family:Sarabun,sans-serif;font-size:12px;font-weight:700;cursor:pointer">⭐ คะแนน (รายวัน)</button>
       <button onclick="S.gcTab='task';renderGrowthCharts()" id="gc_tab_task" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-family:Sarabun,sans-serif;font-size:12px;font-weight:700;cursor:pointer">📚 สถานะงานแยกวิชา</button>
+    </div>
+    <div id="gc_week_row" style="display:none;margin-bottom:.75rem">
+      <select id="gc_week_select" onchange="renderGrowthCharts()" style="width:100%;padding:8px 10px;border-radius:10px;border:1.5px solid var(--border);font-family:Sarabun,sans-serif;font-size:13px;background:var(--bg);color:var(--text)"></select>
     </div>
     <div id="gc_chart_wrap" style="position:relative;height:360px;margin-bottom:.5rem">
       <canvas id="gc_canvas"></canvas>
@@ -750,6 +753,19 @@ function getWeekKey(d=new Date()){
   const weekNum = 1 + Math.round(((date.getTime()-firstThursday.getTime())/86400000 - 3 + ((firstThursday.getDay()+6)%7))/7);
   return `${date.getFullYear()}-W${String(weekNum).padStart(2,'0')}`;
 }
+// แปลงวันที่ใดๆ เป็นข้อความช่วงจันทร์-ศุกร์ของสัปดาห์นั้น เช่น "6-10 ก.ค. 69" — ใช้แสดงผลให้ครูเข้าใจง่ายกว่ารหัสสัปดาห์ ISO
+function getWeekDateRangeLabel(d=new Date()){
+  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const date=new Date(d.getTime()); date.setHours(0,0,0,0);
+  const dayNum=(date.getDay()+6)%7; // จันทร์=0
+  const mon=new Date(date); mon.setDate(date.getDate()-dayNum);
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4);
+  const yearBE=fri.getFullYear()+543;
+  if(mon.getMonth()===fri.getMonth()){
+    return `${mon.getDate()}-${fri.getDate()} ${months[fri.getMonth()]} ${String(yearBE).slice(-2)}`;
+  }
+  return `${mon.getDate()} ${months[mon.getMonth()]} - ${fri.getDate()} ${months[fri.getMonth()]} ${String(yearBE).slice(-2)}`;
+}
 // key ที่ใช้เช็คว่าผู้ปกครองรับทราบ "รอบงานปัจจุบัน" ไปแล้วหรือยัง
 // ผูกกับชื่อรอบงานที่ครูตั้ง (DB.taskInfo.label) แทนสัปดาห์ปฏิทิน — พอครูเปลี่ยนรอบใหม่ การรับทราบเก่าจะหมดอายุอัตโนมัติ
 function getCurrentAckKey(){
@@ -831,7 +847,10 @@ async function loadDB(){
     if(DB.settings.buddyMissions) DB.buddyMissions=[...DB.settings.buddyMissions];
     if(DB.settings.deletionLogs) DB.deletionLogs=[...DB.settings.deletionLogs];
     if(DB.settings.subjectTeacherData) DB.subjectTeacherData=JSON.parse(JSON.stringify(DB.settings.subjectTeacherData));
+    if(DB.settings.subjectWeeklySnapshots) DB.subjectWeeklySnapshots=[...DB.settings.subjectWeeklySnapshots];
   }
+  // เช็คว่าขึ้นสัปดาห์ใหม่หรือยัง ถ้าใช่ บันทึก snapshot สถานะงานแยกวิชาของสัปดาห์ก่อนหน้าให้อัตโนมัติ (เฉพาะฝั่งครูประจำชั้น กันหลายคนเขียนทับกัน)
+  if(S.role === 'teacher') maybeRecordSubjectWeeklySnapshot();
   // ปิดภารกิจ Buddy Mission ที่หมดเขตแล้วอัตโนมัติ ไม่แจกคะแนนใดๆเพิ่ม (เฉพาะฝั่งครู เพื่อไม่ให้แข่งกันเขียนพร้อมกัน)
   if(S.role === 'teacher') checkAllExpiredBuddyMissions();
   // Don't re-render if user is scrolling the activity log box (กันเด้งกลับขึ้นบนสุดตอน poll)
@@ -2548,6 +2567,7 @@ function openGrowthChartModal(){
   const students = Object.entries(DB.students||{}).sort((a,b)=>(a[1].no||0)-(b[1].no||0));
   sel.innerHTML = students.map(([sid,s])=>`<option value="${sid}" ${sid===S.sid?'selected':''}>${s.no?.toString().padStart(2,'0')||''} ${s.name}</option>`).join('');
   if(!S.gcTab) S.gcTab = 'score';
+  document.getElementById('gc_week_select').dataset.filled = ''; // เติมตัวเลือกสัปดาห์ใหม่ทุกครั้งที่เปิด modal เผื่อมี snapshot ใหม่เพิ่มเข้ามา
   document.getElementById('growthChartModal').style.display = 'flex';
   setTimeout(()=>renderGrowthCharts(), 50); // รอ modal แสดงก่อน ให้ canvas มีขนาดจริงตอน Chart.js init
 }
@@ -2601,6 +2621,38 @@ function computeSubjectSnapshot(sid){
   return {subjects,done,missing,pending};
 }
 
+// บันทึก "ภาพรวมสถานะงานแยกวิชา" ของทุกคนแบบอัตโนมัติ ทุกครั้งที่ตรวจพบว่าขึ้นสัปดาห์ใหม่แล้ว — ไม่ต้องมีใครกดอะไรเลย
+// ใช้ข้อมูลสดล่าสุด ณ ตอนที่ตรวจพบการขึ้นสัปดาห์ใหม่ มาบันทึกเป็น snapshot ของ "สัปดาห์ที่เพิ่งจบไป"
+// เรียกจาก loadDB() เฉพาะฝั่งครูประจำชั้น กันหลายคนเขียนทับกันพร้อมกัน
+async function maybeRecordSubjectWeeklySnapshot(){
+  const today = new Date();
+  const curWeekKey = getWeekKey(today);
+  const curLabel = getWeekDateRangeLabel(today);
+  const settings = DB.settings || {};
+  const lastKey = settings.lastSubjectSnapshotWeekKey || null;
+  const lastLabel = settings.lastSubjectSnapshotWeekLabel || null;
+
+  if(lastKey === curWeekKey) return; // เช็คของสัปดาห์นี้ไปแล้ว ไม่ต้องทำซ้ำ
+
+  if(lastKey){
+    // ขึ้นสัปดาห์ใหม่แล้ว — เก็บสถานะตอนนี้เป็น snapshot ของสัปดาห์ก่อนหน้า (lastKey) ถ้ายังไม่เคยเก็บ
+    const already = (DB.subjectWeeklySnapshots||[]).some(sn=>sn.weekKey===lastKey);
+    if(!already){
+      const studentsSnap = {};
+      Object.keys(DB.students||{}).forEach(sid=>{ studentsSnap[sid] = computeSubjectSnapshot(sid); });
+      if(!DB.subjectWeeklySnapshots) DB.subjectWeeklySnapshots = [];
+      DB.subjectWeeklySnapshots.push({weekKey: lastKey, label: lastLabel||lastKey, ts: Date.now(), students: studentsSnap});
+      if(DB.subjectWeeklySnapshots.length > 52) DB.subjectWeeklySnapshots = DB.subjectWeeklySnapshots.slice(-52); // เก็บแค่ ~1 ปีล่าสุด
+      try{ await api('PATCH', '/settings/subjectWeeklySnapshots', {subjectWeeklySnapshots: DB.subjectWeeklySnapshots}); }catch(e){}
+    }
+  }
+  if(!DB.settings) DB.settings = {};
+  DB.settings.lastSubjectSnapshotWeekKey = curWeekKey;
+  DB.settings.lastSubjectSnapshotWeekLabel = curLabel;
+  try{ await api('PATCH', '/settings/lastSubjectSnapshotWeekKey', {lastSubjectSnapshotWeekKey: curWeekKey}); }catch(e){}
+  try{ await api('PATCH', '/settings/lastSubjectSnapshotWeekLabel', {lastSubjectSnapshotWeekLabel: curLabel}); }catch(e){}
+}
+
 function renderGrowthCharts(){
   if(typeof Chart === 'undefined'){ document.getElementById('gc_empty_msg').textContent='ไม่สามารถโหลดไลบรารีกราฟได้ (เช็คอินเทอร์เน็ต)'; document.getElementById('gc_empty_msg').style.display='block'; return; }
   const sid = document.getElementById('gc_student_select').value;
@@ -2612,6 +2664,21 @@ function renderGrowthCharts(){
   document.getElementById('gc_tab_task').style.background = tab==='task' ? 'var(--blue-bg)' : 'var(--surface)';
   document.getElementById('gc_tab_task').style.color = tab==='task' ? 'var(--blue)' : 'var(--muted)';
   document.getElementById('gc_tab_task').style.borderColor = tab==='task' ? 'var(--blue)' : 'var(--border)';
+
+  const weekRow = document.getElementById('gc_week_row');
+  const weekSelect = document.getElementById('gc_week_select');
+  if(tab==='task'){
+    weekRow.style.display='block';
+    // เติมตัวเลือกสัปดาห์แค่ครั้งแรกที่เปิด (กันรีเซ็ตค่าที่เลือกไว้ทุกครั้งที่ render)
+    if(weekSelect.dataset.filled !== '1'){
+      const weeks = [...(DB.subjectWeeklySnapshots||[])].sort((a,b)=>b.ts-a.ts);
+      weekSelect.innerHTML = `<option value="live">🔴 ตอนนี้ (สด)</option>` +
+        weeks.map(w=>`<option value="${w.weekKey}">${w.label}</option>`).join('');
+      weekSelect.dataset.filled = '1';
+    }
+  } else {
+    weekRow.style.display='none';
+  }
 
   if(_gcChartInstance){ _gcChartInstance.destroy(); _gcChartInstance = null; }
   const canvas = document.getElementById('gc_canvas');
@@ -2653,7 +2720,19 @@ function renderGrowthCharts(){
       }
     });
   } else {
-    const snap = computeSubjectSnapshot(sid);
+    const weekVal = weekSelect.value || 'live';
+    let snap;
+    if(weekVal === 'live'){
+      snap = computeSubjectSnapshot(sid);
+    } else {
+      const snapshot = (DB.subjectWeeklySnapshots||[]).find(w=>w.weekKey===weekVal);
+      snap = snapshot && snapshot.students && snapshot.students[sid];
+      if(!snap){
+        canvas.style.display='none'; emptyMsg.style.display='block';
+        emptyMsg.textContent = 'ไม่มีข้อมูลของนักเรียนคนนี้ในสัปดาห์ที่เลือก (อาจยังไม่ได้เพิ่มชื่อเข้าระบบตอนนั้น)';
+        return;
+      }
+    }
     if(snap.subjects.length===0){
       canvas.style.display='none'; emptyMsg.style.display='block';
       emptyMsg.textContent = 'ยังไม่มีวิชาในระบบ';
