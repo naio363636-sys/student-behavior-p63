@@ -287,7 +287,7 @@ label{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;font-wei
 <div id="growthChartModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:center;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)closeGrowthChartModal()">
   <div style="background:var(--surface);border-radius:20px;padding:1.25rem;width:100%;max-width:640px;margin:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-      <div style="font-size:16px;font-weight:700;color:#7B2FBE">📈 กราฟพัฒนาการนักเรียน</div>
+      <div style="font-size:16px;font-weight:700;color:#7B2FBE">📈 กราฟสรุปงาน</div>
       <button onclick="closeGrowthChartModal()" style="background:var(--bg);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;color:var(--text)">✕</button>
     </div>
     <div class="frow">
@@ -1296,7 +1296,7 @@ function vTList(){
       </div>
       <div onclick="openGrowthChartModal()" style="cursor:pointer;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:12px 4px;display:flex;flex-direction:column;align-items:center;gap:5px">
         <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#E08E00,#FFB840);display:flex;align-items:center;justify-content:center;font-size:18px">📈</div>
-        <div style="font-size:10.5px;font-weight:700;color:var(--text);text-align:center;line-height:1.25">กราฟ<br><span style="font-weight:400;color:var(--muted)">พัฒนาการ</span></div>
+        <div style="font-size:10.5px;font-weight:700;color:var(--text);text-align:center;line-height:1.25">กราฟ<br><span style="font-weight:400;color:var(--muted)">สรุปงาน</span></div>
       </div>
     </div>
     ${S.showQuestMgr?`<div style="background:var(--surface);border-radius:16px;padding:1rem;margin-bottom:.75rem;border:1px solid var(--border)">
@@ -1891,6 +1891,9 @@ function vPView(){
       })()}
       <div class="sc"><div class="sl">แลกแล้ว</div><div class="sv" style="color:var(--blue)">${rl.length}</div></div>
     </div>
+    <button onclick="openGrowthChartModal()" style="width:100%;padding:10px;border-radius:12px;border:1.5px solid #7B2FBE;background:#F3E5F5;color:#7B2FBE;font-family:Sarabun,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:.875rem;display:flex;align-items:center;justify-content:center;gap:6px">
+      📈 ดูกราฟสรุปงาน
+    </button>
     ${vParentAckBanner(s)}
     <div class="tabs-grid">${TABS.map(tb=>`<button class="tab ${S.tab===tb.k?'on':''}" onclick="setTab('${tb.k}')"><i class="ti ${tb.i}"></i> ${tb.l}${tb.dot?'<span class="ndot"></span>':''}</button>`).join('')}</div>
     ${content}`;}
@@ -2564,8 +2567,16 @@ let _gcChartInstance = null;
 
 function openGrowthChartModal(){
   const sel = document.getElementById('gc_student_select');
-  const students = Object.entries(DB.students||{}).sort((a,b)=>(a[1].no||0)-(b[1].no||0));
-  sel.innerHTML = students.map(([sid,s])=>`<option value="${sid}" ${sid===S.sid?'selected':''}>${s.no?.toString().padStart(2,'0')||''} ${s.name}</option>`).join('');
+  if(S.role === 'parent'){
+    // ผู้ปกครองเห็นได้แค่ลูกตัวเองเท่านั้น ไม่ให้เลือกดูนักเรียนคนอื่น
+    const s = DB.students[S.sid];
+    sel.innerHTML = s ? `<option value="${S.sid}" selected>${s.no?.toString().padStart(2,'0')||''} ${s.name}</option>` : '';
+    sel.disabled = true;
+  } else {
+    const students = Object.entries(DB.students||{}).sort((a,b)=>(a[1].no||0)-(b[1].no||0));
+    sel.innerHTML = students.map(([sid,s])=>`<option value="${sid}" ${sid===S.sid?'selected':''}>${s.no?.toString().padStart(2,'0')||''} ${s.name}</option>`).join('');
+    sel.disabled = false;
+  }
   if(!S.gcTab) S.gcTab = 'score';
   document.getElementById('gc_week_select').dataset.filled = ''; // เติมตัวเลือกสัปดาห์ใหม่ทุกครั้งที่เปิด modal เผื่อมี snapshot ใหม่เพิ่มเข้ามา
   document.getElementById('growthChartModal').style.display = 'flex';
