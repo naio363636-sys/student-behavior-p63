@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#1A6BC4">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="RS9 ป.6/3">
+<meta name="apple-mobile-web-app-title" content="RS9" id="appTitleMeta">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -803,6 +803,26 @@ async function api(method,path,body){
   const res=await fetch('/api'+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
   return res.json();
 }
+// ชื่อห้อง (เช่น "ป.6/2") ไม่ได้ฝังอยู่ในไฟล์ index.html แล้ว แต่เก็บไว้ใน DB.settings.roomName
+// เหมือนคะแนน/preset อื่นๆ เพื่อให้ไฟล์ index.html ตัวเดียวกันเป๊ะๆ วางทับได้ทุกห้อง ไม่ต้องแก้ไฟล์แยกรายห้อง
+function getRoomName(){ return (DB.settings&&DB.settings.roomName)||'(ยังไม่ตั้งชื่อห้อง)'; }
+function applyRoomName(){
+  const name=getRoomName();
+  document.title='ระบบคะแนนพฤติกรรมนักเรียน '+name;
+  const m=document.getElementById('appTitleMeta');
+  if(m) m.setAttribute('content','RS9 '+name);
+}
+async function doEditRoomName(){
+  const cur=(DB.settings&&DB.settings.roomName)||'';
+  const name=prompt('ตั้งชื่อห้อง (เช่น ป.6/2)',cur);
+  if(name===null)return; // กดยกเลิก
+  if(!name.trim()){alert('กรุณากรอกชื่อห้อง');return;}
+  if(!DB.settings)DB.settings={};
+  DB.settings.roomName=name.trim();
+  await api('PATCH','/settings/roomName',{roomName:DB.settings.roomName});
+  applyRoomName();
+  render(true);
+}
 async function loadDB(){
   const data=await api('GET','/data');
   DB=data||{students:{},requests:{}};
@@ -830,6 +850,7 @@ async function loadDB(){
     if(DB.settings.subjectTeacherData) DB.subjectTeacherData=JSON.parse(JSON.stringify(DB.settings.subjectTeacherData));
     if(DB.settings.subjectWeeklySnapshots) DB.subjectWeeklySnapshots=[...DB.settings.subjectWeeklySnapshots];
   }
+  applyRoomName(); // อัปเดตชื่อห้อง (ใต้ไอคอนหน้าจอโฮมมือถือ + ในหน้าเว็บ) จากค่าที่บันทึกไว้ใน DB.settings.roomName — ไม่ได้ฝังไว้ในไฟล์ index.html เพื่อให้ไฟล์เดียวใช้ได้ทุกห้อง
   // เช็คว่าขึ้นสัปดาห์ใหม่หรือยัง ถ้าใช่ บันทึก snapshot สถานะงานแยกวิชาของสัปดาห์ก่อนหน้าให้อัตโนมัติ (เฉพาะฝั่งครูประจำชั้น กันหลายคนเขียนทับกัน)
   if(S.role === 'teacher') maybeRecordSubjectWeeklySnapshot();
   // ปิดภารกิจ Buddy Mission ที่หมดเขตแล้วอัตโนมัติ ไม่แจกคะแนนใดๆเพิ่ม (เฉพาะฝั่งครู เพื่อไม่ให้แข่งกันเขียนพร้อมกัน)
@@ -959,7 +980,7 @@ function vMenu(){
         <div style="font-size:clamp(16px,5vw,22px);color:#fff;font-weight:700;font-family:'Prompt',sans-serif;white-space:nowrap">โรงเรียนรัตนโกสินทร์ ๙</div>
       </div>
       <div style="background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border-radius:20px;padding:1rem 2rem;margin-bottom:1.5rem;text-align:center;max-width:600px">
-        <div style="font-size:clamp(18px,5vw,26px);font-weight:700;font-family:'Prompt',sans-serif;color:white;margin-bottom:.4rem">ระบบคะแนนพฤติกรรมและการส่งงาน<br>ของนักเรียน ป.6/3</div>
+        <div style="font-size:clamp(18px,5vw,26px);font-weight:700;font-family:'Prompt',sans-serif;color:white;margin-bottom:.4rem">ระบบคะแนนพฤติกรรมและการส่งงาน<br>ของนักเรียน ${getRoomName()}</div>
         <div style="font-size:15px;color:rgba(255,255,255,.9)">เข้าสู่ระบบในฐานะใคร?</div>
       </div>
       <div style="width:100%;max-width:900px;display:flex;flex-direction:column;gap:1rem">
@@ -1248,7 +1269,7 @@ function vTList(){
     ${editModal}${rewardModal}
     <div>
     <div class="hrow hrow-sticky" style="flex-direction:column;align-items:stretch;gap:8px">
-      <div style="text-align:center;font-size:clamp(16px,3vw,26px);font-weight:800;font-family:Prompt,sans-serif;line-height:1.3">ระบบคะแนนพฤติกรรมและการส่งงานของนักเรียน ป.6/3 <span style="font-size:13px;font-weight:400;color:var(--muted)">(${Object.keys(DB.students).length} คน)</span></div>
+      <div style="text-align:center;font-size:clamp(16px,3vw,26px);font-weight:800;font-family:Prompt,sans-serif;line-height:1.3">ระบบคะแนนพฤติกรรมและการส่งงานของนักเรียน ${getRoomName()} <button onclick="doEditRoomName()" title="แก้ไขชื่อห้อง" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer;vertical-align:middle">✏️</button> <span style="font-size:13px;font-weight:400;color:var(--muted)">(${Object.keys(DB.students).length} คน)</span></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
         ${pc>0?`<button class="btn btn-a" style="font-size:13px" onclick="go('tpending')"><i class="ti ti-bell"></i> คำขอ (${pc})</button>`:''}
         <button class="btn" style="font-size:13px" onclick="go('taddstudent')"><i class="ti ti-plus"></i> เพิ่ม</button>
